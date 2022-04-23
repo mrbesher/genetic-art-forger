@@ -16,6 +16,6 @@ if len(argv) < 2:
 
 filename = argv[1]
 
-f = Forger(filename, population_size=1000, generation_num=2000, parent_num=200)
+f = Forger(filename, population_size=1000, generation_num=1000, parent_num=50, dynamic_path=True)
 
-f.fabricate()
+f.fabricate(mu = 0.03)
