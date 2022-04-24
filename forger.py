@@ -22,14 +22,15 @@ LL = lambda x,y: (x, y-1)
 DIRECTION_FINDERS = [ST, UL, UU, UR, RR, DR, DD, DL, LL]
 
 class Forger:
-    def __init__(self, filename: str, population_size: int = 5000, generation_num: int = 1000, parent_num: int = 500, dynamic_path: bool = False):
+    def __init__(self, filename: str, population_size: int = 5000, generation_num: int = 1000, parent_num: int = 500,
+                dynamic_path: bool = False, dynamic_mutation: bool = False):
+
         # set the initialization parameters
         self.population_size = population_size
         self.generation_num = generation_num
         self.parent_num = parent_num
         self.dynamic_path = dynamic_path
         self.offspring_size = population_size - parent_num
-        self.mutation_delta = 0.2 / generation_num
 
         # set the target image
         self.target_img = myopencvutil.read_binary_img(filename=filename)
@@ -59,7 +60,12 @@ class Forger:
             self.path_len = path_bounds['max']
             self.path_frac_len = path_bounds['max']
             self.path_delta = 0
-        
+
+        if dynamic_mutation:
+            self.mutation_delta = 0.2 / (generation_num / 2)
+        else:
+            self.mutation_delta = 0.0
+
         self.population.sort(reverse = True, key = self.fitness)
     
     
@@ -155,8 +161,7 @@ class Forger:
             offspring = self.crossover(parents)
 
             # FIXME: adjust to enable dynamic mutation
-            # offspring = self.mutate(offspring, mu = 0.2 - g * self.mutation_delta + 0.01)
-            offspring = self.mutate(offspring, mu = mu)
+            offspring = self.mutate(offspring, mu = max(mu - g * self.mutation_delta, 0.01))
             self.population = parents + offspring
             self.population.sort(reverse = True, key = lambda p: self.fitness(p))
 
@@ -167,7 +172,7 @@ class Forger:
             fitness_scores.append(self.fitness(self.population[0]))
 
             img = self.execute_path(self.population[0])
-            myopencvutil.plot_image(img)
+            # myopencvutil.plot_image(img)
 
             if g % 10 == 0:
                 myopencvutil.save_image(img, f'{g:04d}.png', foldername=foldername, text = f'Gen{g:04d}')
@@ -175,6 +180,57 @@ class Forger:
             pbar.update(1)
             
         pbar.close()
+
+        print(f'Fitness of last gen: {self.fitness(self.population[0])}')
+
+        myopencvutil.leave(img, filename=f'{foldername}.png')
+
+        return fitness_scores
+
+    def probabilistic_fabricate(self, mu: float = 0.05, foldername = 'generations'):
+        pbar = tqdm(total=self.generation_num)
+        makedirs(foldername, exist_ok=True)
+        fitness_scores = []
+
+        # set cumulative weights for probability (5, 10, ... , n)
+        # weights = tuple([5*(i+1) for i in range(len(self.population))])
+
+        self.population.reverse()
+        weights = tuple(map(self.fitness, self.population))
+
+        for g in range(self.generation_num):
+
+            parents = random.choices(self.population, weights=weights, k = self.parent_num)
+
+            # remove the steps where we decided to stop `False`
+            for i in range(len(parents)):
+                parents[i] = parents[i][ parents[i] != 0 ]
+                parents[i].resize(self.path_len, refcheck=False)
+
+            offspring = self.crossover(parents)
+
+            offspring = self.mutate(offspring, mu = mu)
+            self.population = parents + offspring
+            self.population.sort(reverse = False, key = lambda p: self.fitness(p))
+            weights = tuple(map(self.fitness, self.population))
+
+            self.path_frac_len += self.path_delta
+            self.path_len = int(min(self.path_frac_len, self.path_limit))
+            
+            # add the score of the most fit individual to fitness_scores
+            fitness_scores.append(self.fitness(self.population[-1]))
+
+            img = self.execute_path(self.population[-1])
+            # myopencvutil.plot_image(img)
+
+            if g % 10 == 0:
+                myopencvutil.save_image(img, f'{g:04d}.png', foldername=foldername, text = f'Gen{g:04d}')
+            
+            pbar.update(1)
+            
+        pbar.close()
+
+        print(f'Fitness of last gen: {self.fitness(self.population[-1])}')
 
         myopencvutil.leave(img, filename=f'{foldername}.png')
 
