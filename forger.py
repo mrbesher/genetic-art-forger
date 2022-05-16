@@ -80,7 +80,7 @@ class Forger:
         for s in path:
             x_new, y_new = DIRECTION_FINDERS[s](x, y)
             x_new = max(min(x_new, blank.shape[0] - 1), 0)
-            y_new = max(min(y_new, blank.shape[0] - 1), 0)
+            y_new = max(min(y_new, blank.shape[1] - 1), 0)
             try:
                 blank[x_new][y_new ] = True
                 x, y = x_new, y_new
@@ -107,7 +107,6 @@ class Forger:
 
         return c1 * matching_ones /  self.target_ones + c2 * matching_zeros / self.target_zeros
 
-    # FIXME: design a function that behaves reasonably
     def turning_penalty(self, path) -> float:
         # The absolute differences between consecutive elements of an array
         diffs = np.abs(np.ediff1d(path)).sum()
@@ -124,7 +123,7 @@ class Forger:
     def crossover(self, parents):
 
         # crossover index
-        c_idx = np.uint8(self.offspring_size/2)
+        c_idx = np.uint8(self.path_len/2)
         
         # the best parents mating is not always the best option
         np.random.shuffle(parents)
@@ -160,7 +159,6 @@ class Forger:
 
             offspring = self.crossover(parents)
 
-            # FIXME: adjust to enable dynamic mutation
             offspring = self.mutate(offspring, mu = max(mu - g * self.mutation_delta, 0.01))
             self.population = parents + offspring
             self.population.sort(reverse = True, key = lambda p: self.fitness(p))
@@ -172,7 +170,7 @@ class Forger:
             fitness_scores.append(self.fitness(self.population[0]))
 
             img = self.execute_path(self.population[0])
-            # myopencvutil.plot_image(img)
+            myopencvutil.plot_image(img)
 
             if g % 10 == 0:
                 myopencvutil.save_image(img, f'{g:04d}.png', foldername=foldername, text = f'Gen{g:04d}')

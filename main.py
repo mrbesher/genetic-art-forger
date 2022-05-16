@@ -14,7 +14,7 @@ parser.add_argument("-p", action = "store_true", help = "Choose the best parents
 parser.add_argument("--popsize", default = 1000, help = "Set the population size", type=int)
 parser.add_argument("--gennum", default = 1000, help = "Set the number of generations", type=int)
 parser.add_argument("--parentnum", default = 50, help = "Set the number of parents", type=int)
-parser.add_argument("--mu", default = .03, help = "Set the number of parents", type=float)
+parser.add_argument("--mu", default = .03, help = "Set mutation rate", type=float)
 
 args = parser.parse_args()
 
